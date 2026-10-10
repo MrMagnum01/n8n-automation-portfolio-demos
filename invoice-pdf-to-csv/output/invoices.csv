@@ -1,0 +1,13 @@
+﻿file,invoice_no,supplier,layout,invoice_date,due_date,currency,line_count,subtotal,tax,total,status,issue_codes
+alder-AS-10421.pdf,AS-10421,Alder Street Print Shop,classic,2026-08-03,2026-09-02,USD,2,980.00,78.40,1058.40,ok,
+alder-AS-10421_resend.pdf,AS-10421,Alder Street Print Shop,classic,2026-08-23,2026-09-22,USD,4,2818.80,225.50,3044.30,exception,DUPLICATE_INVOICE_NO
+alder-AS-10433.pdf,AS-10433,Alder Street Print Shop,classic,2026-08-17,2026-09-16,USD,2,1556.70,124.54,1681.24,ok,
+birchwood-BF-0087.pdf,BF-2026-0087,Birchwood Freight Ltd,modern,2026-08-06,2026-09-05,GBP,5,3684.80,736.96,4421.76,ok,
+birchwood-BF-0091.pdf,BF-2026-0091,Birchwood Freight Ltd,modern,2026-08-20,2026-09-19,GBP,4,1187.30,237.46,1509.76,exception,TOTAL_MISMATCH
+birchwood-no-number.pdf,,Birchwood Freight Ltd,modern,2026-08-28,2026-09-27,GBP,4,3428.00,685.60,4113.60,exception,MISSING_INVOICE_NO
+cobalt-0315.pdf,CA/2026/0315,Cobalt Analytics GmbH,compact,2026-08-09,2026-09-08,EUR,4,15090.00,2867.10,17957.10,ok,
+cobalt-0322.pdf,CA/2026/0322,Cobalt Analytics GmbH,compact,2026-08-15,2026-08-06,EUR,5,25560.90,4856.57,30417.47,exception,DUE_BEFORE_INVOICE
+cobalt-0340.pdf,CA/2026/0340,Cobalt Analytics GmbH,compact,2026-09-03,2026-10-03,EUR,3,14202.40,2698.46,16900.86,ok,
+meridian-MC-7730.pdf,MC-7730,Meridian Cloud Services,classic,2026-08-12,2026-09-11,USD,5,3765.50,376.55,4142.05,exception,LINES_SUBTOTAL_MISMATCH
+northwind-NW-2201.pdf,NW-2201,Northwind Office Partners,modern,2026-08-25,2026-09-24,USD,2,515.50,0.00,515.50,ok,
+scan-0412.pdf,,,,,,,0,,,,unreadable,NO_TEXT_LAYER

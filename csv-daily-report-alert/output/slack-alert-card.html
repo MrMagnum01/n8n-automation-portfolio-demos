@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#fff;font:15px/1.46668 Lato,"Segoe UI",Helvetica,Arial,sans-serif;color:#1d1c1d;padding:28px}
+.chan{color:#616061;font-size:13px;margin-bottom:10px}
+.msg{display:flex;gap:10px} .av{width:36px;height:36px;border-radius:6px;background:#2a7d6b;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.body{max-width:640px} .name{font-weight:900} .app{background:#e8e8e8;border-radius:3px;font-size:10px;padding:0 4px;margin-left:4px;vertical-align:1px} .time{color:#616061;font-size:12px;margin-left:6px}
+.card{border-left:4px solid #e01e5a;padding:2px 0 2px 12px;margin-top:6px}
+h2{font-size:18px;margin:6px 0 8px} .sec{margin:6px 0} .fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin:8px 0}
+hr{border:0;border-top:1px solid #ddd;margin:10px 0} pre{background:#f8f8f8;border:1px solid #ddd;border-radius:4px;padding:8px;font:12px/1.4 Monaco,Menlo,Consolas,monospace;margin:4px 0}
+code{background:#f8f8f8;border:1px solid #ddd;border-radius:3px;color:#c01343;padding:0 3px;font:12px Monaco,Menlo,Consolas,monospace} .ctx{color:#616061;font-size:12px;margin-top:8px}
+.mock{margin-top:16px;color:#98a2b3;font-size:11px}
+</style></head><body><div class="chan"># ops-alerts</div>
+<div class="msg"><div class="av">N8</div><div class="body"><div><span class="name">Orders Report Bot</span><span class="app">APP</span><span class="time">07:00</span></div>
+<div class="card"><h2>&#9888;&#65039; Daily orders report - 2026-10-10</h2><div class="sec"><b>14 of 220 rows need attention (6.36%)</b> in <code>orders_latest.csv</code></div><div class="fields"><div><b>Rows read</b><br>220</div><div><b>Valid</b><br>206</div><div><b>Invalid</b><br>14 (6.36%)</div><div><b>Net revenue</b><br>USD 27,781.92 + EUR 8,147.70</div></div><hr><div class="sec"><b>Invalid rows by reason</b><br>- <b>3</b> x Quantity not a positive whole number (<code>bad_quantity</code>)<br>- <b>3</b> x Missing customer email (<code>missing_email</code>)<br>- <b>3</b> x Unit price not numeric (<code>non_numeric_price</code>)<br>- <b>2</b> x Duplicate order id (<code>duplicate_order_id</code>)<br>- <b>2</b> x Unknown currency (<code>unknown_currency</code>)<br>- <b>1</b> x Order date in the future (<code>future_date</code>)</div><div class="sec"><b>First 10 bad rows</b><br>line 11 - <code>RT-100209</code> - Unknown currency<br>line 21 - <code>RT-100219</code> - Order date in the future<br>line 32 - <code>RT-100201</code> - Duplicate order id<br>line 81 - <code>RT-100279</code> - Unit price not numeric<br>line 94 - <code>RT-100292</code> - Missing customer email<br>line 132 - <code>RT-100330</code> - Unknown currency<br>line 136 - <code>RT-100200</code> - Duplicate order id<br>line 151 - <code>RT-100349</code> - Quantity not a positive whole number<br>line 152 - <code>RT-100350</code> - Quantity not a positive whole number<br>line 158 - <code>RT-100356</code> - Unit price not numeric<br><i>...and 4 more in the CSV</i></div><div class="sec"><b>Revenue by region</b><pre>APAC   USD      5,886.44  (31 orders)
+EMEA   EUR      8,147.70  (46 orders)
+EMEA   USD      3,868.57  (11 orders)
+LATAM  USD      4,001.81  (19 orders)
+NA     USD     14,025.10  (70 orders)</pre></div><div class="sec"><b>Top SKUs</b><br>1. SLP-BAG-15 - 62 units<br>2. BTL-STL-1L - 58 units<br>3. HDL-LED-400 - 53 units<br>4. POL-CARB-PR - 46 units<br>5. TRL-PACK-30 - 44 units</div><div class="ctx">Full list: <code>bad_rows_2026-10-10.csv</code> - report: <code>report_2026-10-10.html</code> - demo run, mock webhook</div></div></div></div>
+<div class="mock">Rendering of the captured Block Kit payload (mock webhook, no real Slack used).</div></body></html>

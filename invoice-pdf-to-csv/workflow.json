@@ -1,0 +1,611 @@
+{
+  "updatedAt": "2026-10-10T11:15:12.475Z",
+  "createdAt": "2026-10-10T11:15:12.475Z",
+  "id": "invPdfToCsv01",
+  "name": "Invoice PDFs to CSV with exception flagging",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "n-01",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "n-02",
+      "name": "Schedule (disabled)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        470
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/home/node/.n8n-files/invoice-pdf-to-csv/in/*.pdf",
+        "options": {}
+      },
+      "id": "n-03",
+      "name": "Read PDFs",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "n-04",
+      "name": "Extract PDF text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        340,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// PARSE INVOICES  (Code node, \"Run once for all items\")\n// One regex profile per supplier layout. To support a new layout, add a profile below;\n// nothing else in the workflow changes.\n//   classic : \"TAX INVOICE\" header, \"Invoice No:\" labels, ISO dates, 1,234.56 numbers\n//   modern  : \"INVOICE\" + \"Invoice #\", \"04 Aug 2026\" dates, \"desc | qty x unit | amount\" rows\n//   compact : one-line header \"Inv. No.: .. Date: .. Due: .. Cur: ..\", dd.mm.yyyy, 1.234,56 numbers\nconst MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };\nconst pad = n => String(n).padStart(2, '0');\n\nconst dateParsers = {\n  iso: s => (/^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s) || []).slice(1).join('-') || null,\n  dmy_mon: s => { const m = /^(\\d{1,2}) ([A-Za-z]{3}) (\\d{4})$/.exec(s); return m && MON[m[2].toLowerCase()] ? `${m[3]}-${pad(MON[m[2].toLowerCase()])}-${pad(m[1])}` : null; },\n  dmy_dot: s => { const m = /^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})$/.exec(s); return m ? `${m[3]}-${pad(m[2])}-${pad(m[1])}` : null; },\n};\nconst numParsers = {\n  us: s => Number(s.replace(/,/g, '')),                       // 1,234.56\n  eu: s => Number(s.replace(/\\./g, '').replace(',', '.')),   // 1.234,56\n};\nconst AMT = { us: '-?[\\\\d,]+\\\\.\\\\d{2}', eu: '-?[\\\\d.]+,\\\\d{2}' };\n\nconst PROFILES = {\n  classic: {\n    detect: /^TAX INVOICE\\b|\\bTAX INVOICE$/m,\n    supplier: /^(.+)\\n/,                                       // first line\n    invoice_no: /^Invoice No:[ \\t]*(.*)$/m,\n    invoice_date: /^Invoice Date:[ \\t]*(.*)$/m,\n    due_date: /^Due Date:[ \\t]*(.*)$/m,\n    currency: /^Currency:[ \\t]*([A-Z]{3})/m,\n    dateFmt: 'iso', numFmt: 'us',\n    linesStart: /^Description\\s+Qty/m, linesEnd: /^Subtotal:/m,\n    line: new RegExp(`^(.+?)\\\\s+(\\\\d+)\\\\s+(${AMT.us})\\\\s+(${AMT.us})$`),\n    subtotal: new RegExp(`^Subtotal:[ \\\\t]*(${AMT.us})`, 'm'),\n    tax: new RegExp(`^Tax \\\\([\\\\d.]+%\\\\):[ \\\\t]*(${AMT.us})`, 'm'),\n    total: new RegExp(`^TOTAL DUE:[ \\\\t]*(${AMT.us})`, 'm'),\n  },\n  modern: {\n    detect: /^INVOICE$/m,\n    supplier: /^(.+)\\n/,\n    invoice_no: /^Invoice #[ \\t]*(.*)$/m,                     // line is absent on some PDFs -> null\n    invoice_date: /^Issued[ \\t]+(.*)$/m,\n    due_date: /^Payment due[ \\t]+(.*)$/m,\n    currency: /^All amounts in[ \\t]+([A-Z]{3})/m,\n    dateFmt: 'dmy_mon', numFmt: 'us',\n    linesStart: /^ITEM$/m, linesEnd: /^Net amount/m,\n    line: new RegExp(`^(.+?) \\\\| (\\\\d+) x (${AMT.us}) \\\\| (${AMT.us})$`),\n    subtotal: new RegExp(`^Net amount[ \\\\t]+(${AMT.us})`, 'm'),\n    tax: new RegExp(`^VAT [\\\\d.]+%[ \\\\t]+(${AMT.us})`, 'm'),\n    total: new RegExp(`^Amount payable[ \\\\t]+(${AMT.us})`, 'm'),\n  },\n  compact: {\n    detect: /^Inv\\. No\\.:/m,\n    supplier: /^(.+)\\n/,\n    invoice_no: /^Inv\\. No\\.:[ \\t]*(.*?)[ \\t]*Date:/m,\n    invoice_date: /Date:[ \\t]*(\\S+)[ \\t]+Due:/m,\n    due_date: /Due:[ \\t]*(\\S+)[ \\t]+Cur:/m,\n    currency: /Cur:[ \\t]*([A-Z]{3})/m,\n    dateFmt: 'dmy_dot', numFmt: 'eu',\n    linesStart: /^Pos\\. Description/m, linesEnd: /^Net total:/m,\n    line: new RegExp(`^\\\\d+\\\\.\\\\s+(.+?) -- (\\\\d+) -- (${AMT.eu}) -- (${AMT.eu})$`),\n    subtotal: new RegExp(`^Net total:[ \\\\t]*(${AMT.eu})`, 'm'),\n    tax: new RegExp(`^VAT [\\\\d.]+%:[ \\\\t]*(${AMT.eu})`, 'm'),\n    total: new RegExp(`^Gross total:[ \\\\t]*(${AMT.eu})`, 'm'),\n  },\n};\n\nconst grab = (re, text) => { const m = re.exec(text); return m ? (m[1] ?? '').trim() || null : null; };\nconst r2 = x => Math.round(x * 100) / 100;\n\n// File names come from the Read node (Extract from File drops binaries but keeps item pairing).\nconst names = $('Read PDFs').all().map(i => i.binary?.data?.fileName ?? 'unknown.pdf');\nconst results = [];\n\n$input.all().forEach((item, idx) => {\n  const file = names[item.pairedItem?.item ?? idx];\n  const base = { file, layout: null, supplier: null, invoice_no: null, invoice_date: null, due_date: null,\n                 currency: null, lines: [], subtotal: null, tax: null, total: null, parse_error: null, text_chars: 0 };\n  if (item.json.error) { results.push({ json: { ...base, parse_error: 'PDF_READ_ERROR' } }); return; }\n  const text = String(item.json.text ?? '').replace(/\\r/g, '').trim();\n  base.text_chars = text.length;\n  if (text.length < 20) { results.push({ json: { ...base, parse_error: 'NO_TEXT_LAYER' } }); return; }  // scanned / image-only\n  const layout = Object.keys(PROFILES).find(k => PROFILES[k].detect.test(text));\n  if (!layout) { results.push({ json: { ...base, parse_error: 'UNKNOWN_LAYOUT' } }); return; }\n  const P = PROFILES[layout];\n  const num = s => (s == null ? null : r2(numParsers[P.numFmt](s)));\n  const date = s => (s == null ? null : dateParsers[P.dateFmt](s));\n\n  // line items = every row between the table header and the totals block\n  const from = text.search(P.linesStart), to = text.search(P.linesEnd);\n  const lines = text.slice(from, to < 0 ? undefined : to).split('\\n').map(l => l.trim()).flatMap((l, n) => {\n    const m = P.line.exec(l);\n    return m ? [{ line_no: 0, description: m[1].trim(), qty: Number(m[2]), unit_price: num(m[3]), amount: num(m[4]) }] : [];\n  }).map((l, n) => ({ ...l, line_no: n + 1 }));\n\n  let supplier = grab(P.supplier, text + '\\n');\n  if (supplier && supplier === supplier.toUpperCase()) supplier = supplier.replace(/\\w\\S*/g, w => w[0] + w.slice(1).toLowerCase());\n  results.push({ json: {\n    ...base, layout, supplier,\n    invoice_no: grab(P.invoice_no, text), invoice_date: date(grab(P.invoice_date, text)), due_date: date(grab(P.due_date, text)),\n    currency: grab(P.currency, text), lines,\n    subtotal: num(grab(P.subtotal, text)), tax: num(grab(P.tax, text)), total: num(grab(P.total, text)),\n  } });\n});\n\nresults.sort((a, b) => (a.json.file < b.json.file ? -1 : a.json.file > b.json.file ? 1 : 0));\nreturn results;\n"
+      },
+      "id": "n-05",
+      "name": "Parse invoices",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// VALIDATE  (Code node, \"Run once for all items\")\n// Checks, each producing a machine-readable reason code:\n//   NO_TEXT_LAYER / UNKNOWN_LAYOUT / PDF_READ_ERROR   parser could not read the file (from Parse step)\n//   MISSING_INVOICE_NO, MISSING_FIELD                 required fields\n//   LINE_AMOUNT_MISMATCH                              qty x unit price != printed line amount\n//   LINES_SUBTOTAL_MISMATCH                           sum of lines != printed subtotal\n//   TOTAL_MISMATCH                                    subtotal + tax != printed total\n//   DUE_BEFORE_INVOICE                                due date earlier than invoice date\n//   DUPLICATE_INVOICE_NO                              same supplier + invoice number already seen (in file-name order)\nconst TOLERANCE = 0.02;                       // currency units; absorbs per-line rounding\nconst REQUIRED = ['supplier', 'invoice_date', 'due_date', 'currency', 'subtotal', 'tax', 'total'];\nconst money = x => x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\nconst diff = (a, b) => Math.round((a - b) * 100) / 100;\n\nconst firstSeen = new Map();\nreturn $input.all().map(({ json: inv }) => {\n  const issues = [];\n  const add = (code, detail) => issues.push({ code, detail });\n\n  if (inv.parse_error) {\n    add(inv.parse_error, inv.parse_error === 'NO_TEXT_LAYER'\n      ? `no extractable text (${inv.text_chars} chars) - likely a scanned image, needs OCR or manual entry`\n      : inv.parse_error === 'UNKNOWN_LAYOUT' ? 'text found but no layout profile matches' : 'PDF could not be read');\n    return { json: { ...inv, status: 'unreadable', issues } };\n  }\n\n  if (!inv.invoice_no) add('MISSING_INVOICE_NO', 'no invoice number found on the document');\n  for (const f of REQUIRED) if (inv[f] == null) add('MISSING_FIELD', `${f} not found`);\n  if (!inv.lines.length) add('MISSING_FIELD', 'no line items found');\n\n  for (const l of inv.lines) {\n    const d = diff(l.qty * l.unit_price, l.amount);\n    if (Math.abs(d) > TOLERANCE) add('LINE_AMOUNT_MISMATCH', `line ${l.line_no} \"${l.description}\": ${l.qty} x ${money(l.unit_price)} = ${money(l.qty * l.unit_price)}, printed ${money(l.amount)}`);\n  }\n  if (inv.lines.length && inv.subtotal != null) {\n    const sum = diff(inv.lines.reduce((s, l) => s + l.amount, 0), 0);\n    const d = diff(inv.subtotal, sum);\n    if (Math.abs(d) > TOLERANCE) add('LINES_SUBTOTAL_MISMATCH', `lines add up to ${money(sum)}, printed subtotal ${money(inv.subtotal)} (diff ${money(d)})`);\n  }\n  if (inv.subtotal != null && inv.tax != null && inv.total != null) {\n    const expect = diff(inv.subtotal + inv.tax, 0);\n    const d = diff(inv.total, expect);\n    if (Math.abs(d) > TOLERANCE) add('TOTAL_MISMATCH', `subtotal ${money(inv.subtotal)} + tax ${money(inv.tax)} = ${money(expect)}, printed total ${money(inv.total)} (diff ${money(d)})`);\n  }\n  if (inv.invoice_date && inv.due_date && inv.due_date < inv.invoice_date)   // ISO strings sort chronologically\n    add('DUE_BEFORE_INVOICE', `due ${inv.due_date} is before invoice date ${inv.invoice_date}`);\n\n  if (inv.invoice_no) {\n    const key = `${(inv.supplier || '').toLowerCase()}|${inv.invoice_no.toUpperCase()}`;\n    if (firstSeen.has(key)) add('DUPLICATE_INVOICE_NO', `${inv.invoice_no} from ${inv.supplier} already seen in ${firstSeen.get(key)}`);\n    else firstSeen.set(key, inv.file);\n  }\n  return { json: { ...inv, status: issues.length ? 'exception' : 'ok', issues } };\n});\n"
+      },
+      "id": "n-06",
+      "name": "Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One flat row per PDF -> invoices.csv (column order = CSV column order)\nconst f2 = x => (x == null ? '' : x.toFixed(2));\nreturn $input.all().map(({ json: i }) => ({ json: {\n  file: i.file, invoice_no: i.invoice_no ?? '', supplier: i.supplier ?? '', layout: i.layout ?? '',\n  invoice_date: i.invoice_date ?? '', due_date: i.due_date ?? '', currency: i.currency ?? '',\n  line_count: i.lines.length, subtotal: f2(i.subtotal), tax: f2(i.tax), total: f2(i.total),\n  status: i.status, issue_codes: i.issues.map(x => x.code).join(';'),\n} }));\n"
+      },
+      "id": "n-07",
+      "name": "Rows: invoices",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {
+          "fileName": "invoices.csv",
+          "headerRow": true
+        }
+      },
+      "id": "n-08",
+      "name": "To CSV: invoices",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        980,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/.n8n-files/invoice-pdf-to-csv/out/invoices.csv",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "n-09",
+      "name": "Write invoices.csv",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One row per line item -> line_items.csv (unreadable PDFs have none)\nconst f2 = x => x.toFixed(2);\nreturn $input.all().flatMap(({ json: i }) => i.lines.map(l => ({ json: {\n  file: i.file, invoice_no: i.invoice_no ?? '', line_no: l.line_no, description: l.description,\n  qty: l.qty, unit_price: f2(l.unit_price), amount: f2(l.amount),\n} })));\n"
+      },
+      "id": "n-10",
+      "name": "Rows: line items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {
+          "fileName": "line_items.csv",
+          "headerRow": true
+        }
+      },
+      "id": "n-11",
+      "name": "To CSV: line items",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/.n8n-files/invoice-pdf-to-csv/out/line_items.csv",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "n-12",
+      "name": "Write line_items.csv",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One row per problem found -> exceptions.csv (file, invoice_no, reason, detail)\nreturn $input.all().flatMap(({ json: i }) => i.issues.map(x => ({ json: {\n  file: i.file, invoice_no: i.invoice_no ?? '', reason: x.code, detail: x.detail,\n} })));\n"
+      },
+      "id": "n-13",
+      "name": "Rows: exceptions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {
+          "fileName": "exceptions.csv",
+          "headerRow": true
+        }
+      },
+      "id": "n-14",
+      "name": "To CSV: exceptions",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        980,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/.n8n-files/invoice-pdf-to-csv/out/exceptions.csv",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "n-15",
+      "name": "Write exceptions.csv",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "id": "n-16",
+      "name": "Wait for all CSVs",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// SUMMARY  (Code node, runs once after the three CSVs are written)\nconst inv = $('Validate').all().map(i => i.json);\nconst byReason = {};\ninv.forEach(i => i.issues.forEach(x => { byReason[x.code] = (byReason[x.code] || 0) + 1; }));\nconst ok = inv.filter(i => i.status === 'ok');\nconst flagged = inv.filter(i => i.status !== 'ok');\nconst parsed = inv.filter(i => i.status !== 'unreadable');\nconst sums = {};\nok.forEach(i => { sums[i.currency] = Math.round(((sums[i.currency] || 0) + i.total) * 100) / 100; });\nconst fmt = x => x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\nconst md = [\n  '# Invoice batch summary', '',\n  `- PDFs read: ${inv.length}`,\n  `- Parsed to structured data: ${parsed.length}`,\n  `- Clean (passed every check): ${ok.length}`,\n  `- Flagged for review: ${flagged.length}`, '',\n  '## Exceptions by reason', '',\n  ...Object.entries(byReason).sort().map(([k, v]) => `- ${k}: ${v}`), '',\n  '## Total of clean invoices, by currency', '',\n  ...Object.entries(sums).sort().map(([k, v]) => `- ${k}: ${fmt(v)}`), '',\n  '## Flagged files', '',\n  ...flagged.map(i => `- ${i.file}: ${i.issues.map(x => x.code).join(', ')}`), '',\n].join('\\n');\nreturn [{ json: {\n  pdfs_read: inv.length, parsed: parsed.length, clean: ok.length, flagged: flagged.length,\n  exceptions_by_reason: byReason, clean_totals_by_currency: sums, markdown: md,\n} }];\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "n-17",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "markdown",
+        "options": {
+          "fileName": "summary.md"
+        }
+      },
+      "id": "n-18",
+      "name": "To text: summary",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/.n8n-files/invoice-pdf-to-csv/out/summary.md",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "n-19",
+      "name": "Write summary.md",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Supplier invoice PDFs -> CSV, with exception flagging\nReads every PDF in a folder, extracts the text layer, parses it with one regex profile per supplier layout, validates the arithmetic, dates and duplicates, and writes `invoices.csv`, `line_items.csv`, `exceptions.csv` and a summary. Deterministic: no LLM, no external calls.",
+        "height": 150,
+        "width": 1000,
+        "color": 4
+      },
+      "id": "n-20",
+      "name": "Note: title",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Trigger and read\nManual run, or the (disabled) weekday 07:00 schedule.\nRead every `*.pdf` in the input folder (glob), then pull the text layer out of each.\nA PDF with no text (scanned image) comes through with empty text and is flagged later.",
+        "height": 520,
+        "width": 480,
+        "color": 6
+      },
+      "id": "n-21",
+      "name": "Note: 1 trigger + read",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Parse\nRegex profile per layout: classic, modern, compact. Handles ISO / `04 Aug 2026` / `dd.mm.yyyy` dates and `1,234.56` / `1.234,56` numbers.",
+        "height": 520,
+        "width": 160,
+        "color": 5
+      },
+      "id": "n-22",
+      "name": "Note: 2 parse",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        440,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3. Validate\nLines vs subtotal, subtotal + tax vs total (tolerance 0.02), required fields, due vs invoice date, duplicate numbers.",
+        "height": 520,
+        "width": 160,
+        "color": 3
+      },
+      "id": "n-23",
+      "name": "Note: 3 validate",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        610,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 4. Three CSV outputs\nOne row per invoice, one per line item, one per exception (file, invoice_no, reason, detail).",
+        "height": 650,
+        "width": 520,
+        "color": 4
+      },
+      "id": "n-24",
+      "name": "Note: 4 outputs",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        780,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 5. Summary\nWaits for all three files, then counts invoices and exceptions by reason and writes `summary.md`.",
+        "height": 520,
+        "width": 560,
+        "color": 7
+      },
+      "id": "n-25",
+      "name": "Note: 5 summary",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1310,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Validate": {
+      "main": [
+        [
+          {
+            "node": "Rows: invoices",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Rows: line items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Rows: exceptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rows: invoices": {
+      "main": [
+        [
+          {
+            "node": "To CSV: invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To CSV: invoices": {
+      "main": [
+        [
+          {
+            "node": "Write invoices.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rows: line items": {
+      "main": [
+        [
+          {
+            "node": "To CSV: line items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To CSV: line items": {
+      "main": [
+        [
+          {
+            "node": "Write line_items.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rows: exceptions": {
+      "main": [
+        [
+          {
+            "node": "To CSV: exceptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To CSV: exceptions": {
+      "main": [
+        [
+          {
+            "node": "Write exceptions.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read PDFs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule (disabled)": {
+      "main": [
+        [
+          {
+            "node": "Read PDFs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PDFs": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF text": {
+      "main": [
+        [
+          {
+            "node": "Parse invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse invoices": {
+      "main": [
+        [
+          {
+            "node": "Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write invoices.csv": {
+      "main": [
+        [
+          {
+            "node": "Wait for all CSVs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write line_items.csv": {
+      "main": [
+        [
+          {
+            "node": "Wait for all CSVs",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Write exceptions.csv": {
+      "main": [
+        [
+          {
+            "node": "Wait for all CSVs",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Wait for all CSVs": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary": {
+      "main": [
+        [
+          {
+            "node": "To text: summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To text: summary": {
+      "main": [
+        [
+          {
+            "node": "Write summary.md",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "tags": []
+}

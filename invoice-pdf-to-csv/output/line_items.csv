@@ -1,0 +1,41 @@
+﻿file,invoice_no,line_no,description,qty,unit_price,amount
+alder-AS-10421.pdf,AS-10421,1,Business cards (500),1,45.00,45.00
+alder-AS-10421.pdf,AS-10421,2,Roll-up banner,11,85.00,935.00
+alder-AS-10421_resend.pdf,AS-10421,1,Business cards (500),11,45.90,504.90
+alder-AS-10421_resend.pdf,AS-10421,2,Flyers A5 (1000),12,120.90,1450.80
+alder-AS-10421_resend.pdf,AS-10421,3,Letterhead pad,5,18.00,90.00
+alder-AS-10421_resend.pdf,AS-10421,4,Roll-up banner,9,85.90,773.10
+alder-AS-10433.pdf,AS-10433,1,Letterhead pad,12,18.90,226.80
+alder-AS-10433.pdf,AS-10433,2,Flyers A5 (1000),11,120.90,1329.90
+birchwood-BF-0087.pdf,BF-2026-0087,1,Pallet freight - zone 4,3,210.00,630.00
+birchwood-BF-0087.pdf,BF-2026-0087,2,Customs handling,11,60.90,669.90
+birchwood-BF-0087.pdf,BF-2026-0087,3,Pallet freight - zone 2,12,140.00,1680.00
+birchwood-BF-0087.pdf,BF-2026-0087,4,Storage per week,11,25.90,284.90
+birchwood-BF-0087.pdf,BF-2026-0087,5,Tail-lift surcharge,12,35.00,420.00
+birchwood-BF-0091.pdf,BF-2026-0091,1,Pallet freight - zone 4,2,210.50,421.00
+birchwood-BF-0091.pdf,BF-2026-0091,2,Storage per week,8,25.00,200.00
+birchwood-BF-0091.pdf,BF-2026-0091,3,Tail-lift surcharge,4,35.00,140.00
+birchwood-BF-0091.pdf,BF-2026-0091,4,Customs handling,7,60.90,426.30
+birchwood-no-number.pdf,,1,Customs handling,10,60.90,609.00
+birchwood-no-number.pdf,,2,Storage per week,10,25.50,255.00
+birchwood-no-number.pdf,,3,Tail-lift surcharge,7,35.50,248.50
+birchwood-no-number.pdf,,4,Pallet freight - zone 4,11,210.50,2315.50
+cobalt-0315.pdf,CA/2026/0315,1,Report template,6,310.00,1860.00
+cobalt-0315.pdf,CA/2026/0315,2,Data cleaning (day),9,520.00,4680.00
+cobalt-0315.pdf,CA/2026/0315,3,Support retainer,7,450.00,3150.00
+cobalt-0315.pdf,CA/2026/0315,4,Training session,6,900.00,5400.00
+cobalt-0322.pdf,CA/2026/0322,1,Dashboard build (day),9,640.50,5764.50
+cobalt-0322.pdf,CA/2026/0322,2,Data cleaning (day),11,520.50,5725.50
+cobalt-0322.pdf,CA/2026/0322,3,Report template,12,310.00,3720.00
+cobalt-0322.pdf,CA/2026/0322,4,Support retainer,1,450.90,450.90
+cobalt-0322.pdf,CA/2026/0322,5,Training session,11,900.00,9900.00
+cobalt-0340.pdf,CA/2026/0340,1,Training session,9,900.50,8104.50
+cobalt-0340.pdf,CA/2026/0340,2,Support retainer,5,450.50,2252.50
+cobalt-0340.pdf,CA/2026/0340,3,Dashboard build (day),6,640.90,3845.40
+meridian-MC-7730.pdf,MC-7730,1,Static IP,11,8.00,88.00
+meridian-MC-7730.pdf,MC-7730,2,Cloud storage 1TB monthly,5,48.00,240.00
+meridian-MC-7730.pdf,MC-7730,3,Backup add-on,5,30.50,152.50
+meridian-MC-7730.pdf,MC-7730,4,Compute node monthly,10,220.50,2205.00
+meridian-MC-7730.pdf,MC-7730,5,Priority support,8,150.00,1200.00
+northwind-NW-2201.pdf,NW-2201,1,Ergonomic keyboard,6,79.00,474.00
+northwind-NW-2201.pdf,NW-2201,2,Desk lamp,1,41.50,41.50

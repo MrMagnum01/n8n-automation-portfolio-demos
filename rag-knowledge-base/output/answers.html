@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8"><title>RAG answers</title><style>
+body{font:15px/1.45 system-ui,sans-serif;background:#f6f7f9;color:#1d2330;margin:0;padding:28px;max-width:1000px}
+h1{font-size:20px;margin:0 0 6px} .sum{margin:0 0 18px;color:#46506a}
+.card{background:#fff;border:1px solid #dde1ea;border-left:5px solid #2f8f5b;border-radius:6px;padding:12px 16px;margin:0 0 12px}
+.card.bad{border-left-color:#c0392b} .q{margin-bottom:6px} .m{margin-top:6px;font-size:12.5px;color:#6a7285}
+.tag{font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:4px;margin-right:6px}
+.tag.answer{background:#e1f3ea;color:#1c6b43} .tag.abstain{background:#fdf0d5;color:#8a5a00}
+.cite{display:inline-block;font:12.5px ui-monospace,monospace;background:#e8edf8;color:#27408b;border-radius:4px;padding:1px 6px;margin-left:4px}
+</style><h1>Company knowledge base Q&amp;A - real run (local models, $0 metered)</h1>
+<p class="sum">5/5 answerable questions answered with the expected document cited &middot;
+2/2 unanswerable questions correctly abstained &middot; median 8.79s per question
+(rule-based scoring, no LLM judge)</p>
+<div class="card ok">
+<div class="q"><b>T1</b> How many unused Meridian PTO days can be carried into the next calendar year?</div>
+<div class="a"><span class="tag answer">ANSWER</span> Up to 5 unused PTO days may be carried over into the next calendar year. <span class="cite">[meridian-pto-policy#carryover]</span></div>
+<div class="m">expected: ANSWER / meridian-pto-policy &middot; rule check: PASS &middot; 2.08s</div></div><div class="card ok">
+<div class="q"><b>T2</b> What does error code E12 mean on the Cascade POS terminal?</div>
+<div class="a"><span class="tag answer">ANSWER</span> Error E12 indicates the terminal has lost sync with the manager portal and transactions will queue locally until connectivity is restored. <span class="cite">[cascade-pos-manual#support-contact]</span></div>
+<div class="m">expected: ANSWER / cascade-pos-manual &middot; rule check: PASS &middot; 4.37s</div></div><div class="card ok">
+<div class="q"><b>T3</b> What encryption does CloudVault use to protect backed-up files?</div>
+<div class="a"><span class="tag answer">ANSWER</span> CloudVault uses AES-256 encryption client-side before uploading data. <span class="cite">[solstice-backup-manual#encryption]</span></div>
+<div class="m">expected: ANSWER / solstice-backup-manual &middot; rule check: PASS &middot; 17.7s</div></div><div class="card ok">
+<div class="q"><b>T4</b> Under Meridian&#x27;s current remote work policy, does the company provide a home office equipment stipend, and if so how much?</div>
+<div class="a"><span class="tag answer">ANSWER</span> Yes, Meridian provides a one-time home office stipend of $500 for approved remote employees, covering desk, chair, or monitor purchases. Receipts must be submitted within 60 days of approval. <span class="cite">[meridian-remote-work-v2#equipment]</span></div>
+<div class="m">expected: ANSWER / meridian-remote-work-v2 &middot; rule check: PASS &middot; 7.71s</div></div><div class="card ok">
+<div class="q"><b>T5</b> Under Cascade&#x27;s current returns policy, what is the standard return window, and is there an exception for electronics?</div>
+<div class="a"><span class="tag answer">ANSWER</span> The standard return window is 45 days, and electronics must be returned within 14 days. <span class="cite">[cascade-returns-policy-v2#return-window]</span><span class="cite">[cascade-returns-policy-v2#exceptions]</span></div>
+<div class="m">expected: ANSWER / cascade-returns-policy-v2 &middot; rule check: PASS &middot; 15.58s</div></div><div class="card ok">
+<div class="q"><b>T6</b> Does Solstice Systems offer a mobile app version of SecureLink for iOS or Android?</div>
+<div class="a"><span class="tag abstain">ABSTAIN</span> Not in the documents. </div>
+<div class="m">expected: ABSTAIN &middot; rule check: PASS &middot; 8.79s</div></div><div class="card ok">
+<div class="q"><b>T7</b> What is Meridian Health Partners&#x27; policy on paid jury duty leave?</div>
+<div class="a"><span class="tag abstain">ABSTAIN</span> Not in the documents. </div>
+<div class="m">expected: ABSTAIN &middot; rule check: PASS &middot; 11.1s</div></div>

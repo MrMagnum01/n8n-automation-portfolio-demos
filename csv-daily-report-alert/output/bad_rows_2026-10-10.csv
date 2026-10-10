@@ -1,0 +1,15 @@
+﻿order_id,order_date,customer_email,region,sku,qty,unit_price,currency,status,csv_line,reason
+RT-100209,2026-10-09,customer082@example.com,APAC,STV-GAS-MINI,2,34.95,XXX,shipped,11,unknown_currency
+RT-100219,2027-06-10,customer016@example.com,NA,POL-CARB-PR,4,69.00,USD,shipped,21,future_date
+RT-100201,2026-10-07,customer120@example.com,EMEA,SLP-BAG-15,1,139.90,EUR,paid,32,duplicate_order_id
+RT-100279,2026-10-07,customer126@example.com,NA,SOK-WOOL-3PK,1,"12,5O",USD,paid,81,non_numeric_price
+RT-100292,2026-10-07,,EMEA,SOK-WOOL-3PK,1,24.50,EUR,shipped,94,missing_email
+RT-100330,2026-10-08,customer083@example.com,NA,BTL-STL-1L,2,19.99,ZZZ,shipped,132,unknown_currency
+RT-100200,2026-10-08,customer091@example.com,LATAM,TNT-2P-ALP,1,249.00,USD,shipped,136,duplicate_order_id
+RT-100349,2026-10-08,customer137@example.com,EMEA,JKT-SHELL-M,-3,179.00,EUR,pending,151,bad_quantity
+RT-100350,2026-10-08,customer008@example.com,EMEA,BTL-STL-1L,-1,19.99,EUR,pending,152,bad_quantity
+RT-100356,2026-10-09,customer075@example.com,NA,HDL-LED-400,1,TBD,USD,refunded,158,non_numeric_price
+RT-100365,2026-10-09,,LATAM,STV-GAS-MINI,1,34.95,USD,paid,167,missing_email
+RT-100372,2026-10-07,customer104@example.com,NA,BTL-STL-1L,-3,19.99,USD,shipped,174,bad_quantity
+RT-100380,2026-10-08,customer113@example.com,NA,JKT-SHELL-M,1,TBD,USD,paid,182,non_numeric_price
+RT-100401,2026-10-08,,NA,STV-GAS-MINI,2,34.95,USD,paid,203,missing_email

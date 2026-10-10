@@ -1,0 +1,327 @@
+{
+  "summary": {
+    "questions": 7,
+    "answerable": 5,
+    "answered_with_correct_doc_citation": 5,
+    "answered_with_correct_chunk_citation": 4,
+    "expected_chunk_in_top_k": 5,
+    "expected_fact_string_in_answer": 5,
+    "should_abstain": 2,
+    "abstained_correctly": 2,
+    "false_abstentions_on_answerable": 0,
+    "latency_s_per_question": {
+      "min": 2.08,
+      "median": 8.79,
+      "max": 17.7,
+      "mean": 9.62
+    },
+    "scoring": "rule-based: expected doc id in citations (doc-level) / expected chunk id in citations / expected fact string in answer; abstain = status ABSTAIN. No LLM judge."
+  },
+  "answers": [
+    {
+      "id": "T1",
+      "question": "How many unused Meridian PTO days can be carried into the next calendar year?",
+      "status": "ANSWER",
+      "answer": "Up to 5 unused PTO days may be carried over into the next calendar year.",
+      "citations": [
+        "meridian-pto-policy#carryover"
+      ],
+      "note": "",
+      "raw_model_output": "{ \"answerable\": true, \"answer\": \"Up to 5 unused PTO days may be carried over into the next calendar year.\", \"citations\": [ \"meridian-pto-policy#carryover\" ] }",
+      "retrieved": [
+        {
+          "chunk_id": "meridian-pto-policy#carryover",
+          "score": 0.647
+        },
+        {
+          "chunk_id": "meridian-pto-policy#unused-pto-payout",
+          "score": 0.449
+        },
+        {
+          "chunk_id": "meridian-pto-policy#accrual",
+          "score": 0.443
+        },
+        {
+          "chunk_id": "meridian-hr-faq#payroll-schedule",
+          "score": 0.412
+        }
+      ],
+      "latency_s": 2.08,
+      "embed_ms": 19,
+      "chat_ms": 2064,
+      "chat_load_ms": 4,
+      "answer_tokens": 47,
+      "expected_action": "ANSWER",
+      "expected_docs": [
+        "meridian-pto-policy"
+      ],
+      "expected_chunks": [
+        "meridian-pto-policy#carryover"
+      ],
+      "cited_expected_doc": true,
+      "cited_expected_chunk": true,
+      "retrieval_hit_at_k": true,
+      "fact_in_answer": true,
+      "correct": true
+    },
+    {
+      "id": "T2",
+      "question": "What does error code E12 mean on the Cascade POS terminal?",
+      "status": "ANSWER",
+      "answer": "Error E12 indicates the terminal has lost sync with the manager portal and transactions will queue locally until connectivity is restored.",
+      "citations": [
+        "cascade-pos-manual#support-contact"
+      ],
+      "note": "",
+      "raw_model_output": "{ \"answerable\": true, \"answer\": \"Error E12 indicates the terminal has lost sync with the manager portal and transactions will queue locally until connectivity is restored.\", \"citations\": [ \"[cascade-pos-manual#support-contact]\" ] }",
+      "retrieved": [
+        {
+          "chunk_id": "cascade-pos-manual#error-codes",
+          "score": 0.791
+        },
+        {
+          "chunk_id": "cascade-pos-manual#support-contact",
+          "score": 0.521
+        },
+        {
+          "chunk_id": "cascade-pos-manual#setup",
+          "score": 0.47
+        },
+        {
+          "chunk_id": "cascade-pos-manual#hardware-maintenance",
+          "score": 0.438
+        }
+      ],
+      "latency_s": 4.37,
+      "embed_ms": 52,
+      "chat_ms": 4322,
+      "chat_load_ms": 4,
+      "answer_tokens": 52,
+      "expected_action": "ANSWER",
+      "expected_docs": [
+        "cascade-pos-manual"
+      ],
+      "expected_chunks": [
+        "cascade-pos-manual#error-codes"
+      ],
+      "cited_expected_doc": true,
+      "cited_expected_chunk": false,
+      "retrieval_hit_at_k": true,
+      "fact_in_answer": true,
+      "correct": true
+    },
+    {
+      "id": "T3",
+      "question": "What encryption does CloudVault use to protect backed-up files?",
+      "status": "ANSWER",
+      "answer": "CloudVault uses AES-256 encryption client-side before uploading data.",
+      "citations": [
+        "solstice-backup-manual#encryption"
+      ],
+      "note": "",
+      "raw_model_output": "{ \"answerable\": true, \"answer\": \"CloudVault uses AES-256 encryption client-side before uploading data.\", \"citations\": [ \"[solstice-backup-manual#encryption]\" ] }",
+      "retrieved": [
+        {
+          "chunk_id": "solstice-backup-manual#encryption",
+          "score": 0.801
+        },
+        {
+          "chunk_id": "solstice-backup-manual#overview",
+          "score": 0.657
+        },
+        {
+          "chunk_id": "solstice-backup-manual#supported-platforms",
+          "score": 0.58
+        },
+        {
+          "chunk_id": "solstice-backup-manual#restore-procedure",
+          "score": 0.556
+        }
+      ],
+      "latency_s": 17.7,
+      "embed_ms": 105,
+      "chat_ms": 17595,
+      "chat_load_ms": 6,
+      "answer_tokens": 45,
+      "expected_action": "ANSWER",
+      "expected_docs": [
+        "solstice-backup-manual"
+      ],
+      "expected_chunks": [
+        "solstice-backup-manual#encryption"
+      ],
+      "cited_expected_doc": true,
+      "cited_expected_chunk": true,
+      "retrieval_hit_at_k": true,
+      "fact_in_answer": true,
+      "correct": true
+    },
+    {
+      "id": "T4",
+      "question": "Under Meridian's current remote work policy, does the company provide a home office equipment stipend, and if so how much?",
+      "status": "ANSWER",
+      "answer": "Yes, Meridian provides a one-time home office stipend of $500 for approved remote employees, covering desk, chair, or monitor purchases. Receipts must be submitted within 60 days of approval.",
+      "citations": [
+        "meridian-remote-work-v2#equipment"
+      ],
+      "note": "",
+      "raw_model_output": "{ \"answerable\": true, \"answer\": \"Yes, Meridian provides a one-time home office stipend of $500 for approved remote employees, covering desk, chair, or monitor purchases. Receipts must be submitted within 60 days of approval.\", \"citations\": [ \"meridian-remote-work-v2#equipment\" ] }",
+      "retrieved": [
+        {
+          "chunk_id": "meridian-remote-work-v2#equipment",
+          "score": 0.872
+        },
+        {
+          "chunk_id": "meridian-remote-work-v1#equipment",
+          "score": 0.817
+        },
+        {
+          "chunk_id": "meridian-hr-faq#remote-work-faq",
+          "score": 0.782
+        },
+        {
+          "chunk_id": "meridian-remote-work-v2#home-office-stipend",
+          "score": 0.711
+        }
+      ],
+      "latency_s": 7.71,
+      "embed_ms": 74,
+      "chat_ms": 7631,
+      "chat_load_ms": 4,
+      "answer_tokens": 74,
+      "expected_action": "ANSWER",
+      "expected_docs": [
+        "meridian-remote-work-v2"
+      ],
+      "expected_chunks": [
+        "meridian-remote-work-v2#equipment"
+      ],
+      "cited_expected_doc": true,
+      "cited_expected_chunk": true,
+      "retrieval_hit_at_k": true,
+      "fact_in_answer": true,
+      "correct": true
+    },
+    {
+      "id": "T5",
+      "question": "Under Cascade's current returns policy, what is the standard return window, and is there an exception for electronics?",
+      "status": "ANSWER",
+      "answer": "The standard return window is 45 days, and electronics must be returned within 14 days.",
+      "citations": [
+        "cascade-returns-policy-v2#return-window",
+        "cascade-returns-policy-v2#exceptions"
+      ],
+      "note": "",
+      "raw_model_output": "{ \"answerable\": true, \"answer\": \"The standard return window is 45 days, and electronics must be returned within 14 days.\", \"citations\": [ \"cascade-returns-policy-v2#return-window\", \"cascade-returns-policy-v2#exceptions\" ] }",
+      "retrieved": [
+        {
+          "chunk_id": "cascade-returns-policy-v2#return-window",
+          "score": 0.559
+        },
+        {
+          "chunk_id": "cascade-returns-policy-v1#return-window",
+          "score": 0.53
+        },
+        {
+          "chunk_id": "cascade-support-faq#warranty",
+          "score": 0.509
+        },
+        {
+          "chunk_id": "cascade-returns-policy-v2#exceptions",
+          "score": 0.433
+        }
+      ],
+      "latency_s": 15.58,
+      "embed_ms": 38,
+      "chat_ms": 15545,
+      "chat_load_ms": 6,
+      "answer_tokens": 61,
+      "expected_action": "ANSWER",
+      "expected_docs": [
+        "cascade-returns-policy-v2"
+      ],
+      "expected_chunks": [
+        "cascade-returns-policy-v2#return-window"
+      ],
+      "cited_expected_doc": true,
+      "cited_expected_chunk": true,
+      "retrieval_hit_at_k": true,
+      "fact_in_answer": true,
+      "correct": true
+    },
+    {
+      "id": "T6",
+      "question": "Does Solstice Systems offer a mobile app version of SecureLink for iOS or Android?",
+      "status": "ABSTAIN",
+      "answer": "Not in the documents.",
+      "citations": [],
+      "note": "",
+      "raw_model_output": "{ \"answerable\": false, \"answer\": \"Not in the documents.\", \"citations\": [] }",
+      "retrieved": [
+        {
+          "chunk_id": "solstice-vpn-manual#overview",
+          "score": 0.632
+        },
+        {
+          "chunk_id": "solstice-vpn-manual#installation",
+          "score": 0.624
+        },
+        {
+          "chunk_id": "solstice-faq#general",
+          "score": 0.599
+        },
+        {
+          "chunk_id": "solstice-faq#technical-support",
+          "score": 0.499
+        }
+      ],
+      "latency_s": 8.79,
+      "embed_ms": 91,
+      "chat_ms": 8696,
+      "chat_load_ms": 5,
+      "answer_tokens": 23,
+      "expected_action": "ABSTAIN",
+      "expected_docs": [],
+      "expected_chunks": [],
+      "correct_abstain": true,
+      "correct": true
+    },
+    {
+      "id": "T7",
+      "question": "What is Meridian Health Partners' policy on paid jury duty leave?",
+      "status": "ABSTAIN",
+      "answer": "Not in the documents.",
+      "citations": [],
+      "note": "",
+      "raw_model_output": "{ \"answerable\": false, \"answer\": \"Not in the documents.\", \"citations\": [] }",
+      "retrieved": [
+        {
+          "chunk_id": "meridian-hr-faq#parental-leave",
+          "score": 0.611
+        },
+        {
+          "chunk_id": "meridian-hr-faq#payroll-schedule",
+          "score": 0.575
+        },
+        {
+          "chunk_id": "meridian-remote-work-v2#purpose",
+          "score": 0.574
+        },
+        {
+          "chunk_id": "meridian-remote-work-v1#purpose",
+          "score": 0.561
+        }
+      ],
+      "latency_s": 11.1,
+      "embed_ms": 118,
+      "chat_ms": 10982,
+      "chat_load_ms": 5,
+      "answer_tokens": 23,
+      "expected_action": "ABSTAIN",
+      "expected_docs": [],
+      "expected_chunks": [],
+      "correct_abstain": true,
+      "correct": true
+    }
+  ]
+}

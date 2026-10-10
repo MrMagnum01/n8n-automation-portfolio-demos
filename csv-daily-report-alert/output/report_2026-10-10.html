@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Daily orders report 2026-10-10</title>
+<style>
+ body{font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;background:#f4f6f9;color:#1d2433;margin:0;padding:32px}
+ .wrap{max-width:980px;margin:auto}
+ h1{font-size:24px;margin:0 0 4px} .sub{color:#667085;margin-bottom:22px}
+ .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+ .kpi{background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 1px 3px rgba(16,24,40,.1)}
+ .kpi b{display:block;font-size:28px} .kpi span{color:#667085;font-size:13px}
+ .kpi.bad b{color:#c4321c} .kpi.ok b{color:#1b7f4b}
+ .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+ .card{background:#fff;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(16,24,40,.1);margin-bottom:14px}
+ .card h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;color:#475467}
+ table{border-collapse:collapse;width:100%} th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #eef0f4;font-size:14px}
+ th{color:#667085;font-weight:600} td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+ code{background:#eef0f4;border-radius:4px;padding:1px 6px;font-size:13px}
+ .foot{color:#98a2b3;font-size:12px;margin-top:18px}
+</style></head><body><div class="wrap">
+<h1>Ridgeline Trail Supply - daily orders report</h1>
+<div class="sub">Source <code>orders_latest.csv</code> &middot; order dates 2026-10-07 to 2026-10-09 &middot; generated 2026-10-10 11:18 UTC</div>
+<div class="kpis">
+ <div class="kpi"><b>220</b><span>rows read</span></div>
+ <div class="kpi ok"><b>206</b><span>valid</span></div>
+ <div class="kpi bad"><b>14</b><span>invalid (6.36%)</span></div>
+ <div class="kpi"><b>USD 27,781.92<br>EUR 8,147.70</b><span>net revenue (valid, excl. 29 refunded)</span></div>
+</div>
+<div class="grid">
+ <div class="card"><h2>Revenue by region</h2><table><tr><th>Region</th><th>Cur.</th><th class="n">Orders</th><th class="n">Revenue</th></tr>
+ <tr><td>APAC</td><td>USD</td><td class="n">31</td><td class="n">5,886.44</td></tr><tr><td>EMEA</td><td>EUR</td><td class="n">46</td><td class="n">8,147.70</td></tr><tr><td>EMEA</td><td>USD</td><td class="n">11</td><td class="n">3,868.57</td></tr><tr><td>LATAM</td><td>USD</td><td class="n">19</td><td class="n">4,001.81</td></tr><tr><td>NA</td><td>USD</td><td class="n">70</td><td class="n">14,025.10</td></tr></table></div>
+ <div class="card"><h2>Top SKUs by units</h2><table><tr><th>SKU</th><th class="n">Orders</th><th class="n">Units</th></tr>
+ <tr><td><code>SLP-BAG-15</code></td><td class="n">21</td><td class="n">62</td></tr><tr><td><code>BTL-STL-1L</code></td><td class="n">27</td><td class="n">58</td></tr><tr><td><code>HDL-LED-400</code></td><td class="n">20</td><td class="n">53</td></tr><tr><td><code>POL-CARB-PR</code></td><td class="n">15</td><td class="n">46</td></tr><tr><td><code>TRL-PACK-30</code></td><td class="n">19</td><td class="n">44</td></tr></table></div>
+</div>
+<div class="card"><h2>Invalid rows by reason</h2><table><tr><th>Reason</th><th>Rule</th><th class="n">Rows</th></tr>
+ <tr><td><code>bad_quantity</code></td><td>Quantity not a positive whole number</td><td class="n">3</td></tr><tr><td><code>missing_email</code></td><td>Missing customer email</td><td class="n">3</td></tr><tr><td><code>non_numeric_price</code></td><td>Unit price not numeric</td><td class="n">3</td></tr><tr><td><code>duplicate_order_id</code></td><td>Duplicate order id</td><td class="n">2</td></tr><tr><td><code>unknown_currency</code></td><td>Unknown currency</td><td class="n">2</td></tr><tr><td><code>future_date</code></td><td>Order date in the future</td><td class="n">1</td></tr></table></div>
+<div class="card"><h2>Bad rows (CSV line / order / reason)</h2><table><tr><th class="n">Line</th><th>Order</th><th>Reason</th></tr>
+ <tr><td class="n">11</td><td>RT-100209</td><td><code>unknown_currency</code></td></tr><tr><td class="n">21</td><td>RT-100219</td><td><code>future_date</code></td></tr><tr><td class="n">32</td><td>RT-100201</td><td><code>duplicate_order_id</code></td></tr><tr><td class="n">81</td><td>RT-100279</td><td><code>non_numeric_price</code></td></tr><tr><td class="n">94</td><td>RT-100292</td><td><code>missing_email</code></td></tr><tr><td class="n">132</td><td>RT-100330</td><td><code>unknown_currency</code></td></tr><tr><td class="n">136</td><td>RT-100200</td><td><code>duplicate_order_id</code></td></tr><tr><td class="n">151</td><td>RT-100349</td><td><code>bad_quantity</code></td></tr><tr><td class="n">152</td><td>RT-100350</td><td><code>bad_quantity</code></td></tr><tr><td class="n">158</td><td>RT-100356</td><td><code>non_numeric_price</code></td></tr><tr><td class="n">167</td><td>RT-100365</td><td><code>missing_email</code></td></tr><tr><td class="n">174</td><td>RT-100372</td><td><code>bad_quantity</code></td></tr><tr><td class="n">182</td><td>RT-100380</td><td><code>non_numeric_price</code></td></tr><tr><td class="n">203</td><td>RT-100401</td><td><code>missing_email</code></td></tr></table></div>
+<div class="foot">Synthetic demo data. Full list: <code>bad_rows_2026-10-10.csv</code>. Generated by an n8n workflow.</div>
+</div></body></html>

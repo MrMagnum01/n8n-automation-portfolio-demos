@@ -1,0 +1,244 @@
+{
+  "id": "ragKbIngest0001",
+  "name": "RAG KB - 1 Ingest",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/home/node/.n8n-files/rag-knowledge-base/docs/*.md"
+      },
+      "id": "read-docs",
+      "name": "Read Docs",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "data",
+        "destinationKey": "text",
+        "options": {}
+      },
+      "id": "extract-text",
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split each markdown doc into one chunk per '## ' section.\n// chunk id = <doc-id>#<section-slug>  (this is the citation id used by the Ask workflow)\nconst slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');\nconst out = [];\nfor (const item of $input.all()) {\n  const raw = item.json.text || '';\n  const m = raw.match(/^---\\n([\\s\\S]*?)\\n---\\n([\\s\\S]*)$/);\n  if (!m) continue;\n  const meta = {};\n  for (const line of m[1].split('\\n')) {\n    const k = line.match(/^([a-z_]+):\\s*(.*)$/);\n    if (k) meta[k[1]] = k[2].replace(/^\"|\"$/g, '');\n  }\n  const parts = m[2].split(/^## /m).slice(1);\n  for (const p of parts) {\n    const nl = p.indexOf('\\n');\n    const section = p.slice(0, nl).trim();\n    const body = p.slice(nl + 1).trim();\n    out.push({ json: {\n      chunk_id: `${meta.id}#${slug(section)}`,\n      doc_id: meta.id, section, company: meta.company, doc_type: meta.doc_type,\n      title: meta.title, version: meta.version, status: meta.status,\n      text: body,\n      embed_text: `${meta.title} - ${section}\\n${body}`,\n    }});\n  }\n}\nreturn out;"
+      },
+      "id": "chunk-documents",
+      "name": "Chunk Documents",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:11434/api/embed",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'all-minilm:33m', input: $json.embed_text }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "embed-chunk-(ollama-all-minilm)",
+      "name": "Embed Chunk (Ollama all-minilm)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pair every chunk with its embedding and assemble the vector index (JSON).\nconst chunks = $('Chunk Documents').all();\nconst embs = $input.all();\nconst r5 = v => Math.round(v * 1e5) / 1e5;\nconst rows = chunks.map((c, i) => {\n  const e = embs[i].json.embeddings[0];\n  const { embed_text, ...rest } = c.json;\n  return { ...rest, embedding: e.map(r5) };\n});\nconst index = {\n  embed_model: 'all-minilm:33m',\n  created_at: new Date().toISOString(),\n  doc_count: new Set(rows.map(r => r.doc_id)).size,\n  chunk_count: rows.length,\n  dim: rows[0].embedding.length,\n  chunks: rows,\n};\nreturn [{ json: { json_text: JSON.stringify(index), doc_count: index.doc_count, chunk_count: index.chunk_count, dim: index.dim } }];"
+      },
+      "id": "build-vector-index",
+      "name": "Build Vector Index",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "json_text",
+        "binaryPropertyName": "data",
+        "options": {
+          "fileName": "index.json"
+        }
+      },
+      "id": "to-json-file",
+      "name": "To JSON File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/home/node/.n8n-files/rag-knowledge-base/index.json",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "write-index.json",
+      "name": "Write index.json",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $('Build Vector Index').first().json;\nreturn [{ json: { status: 'indexed', docs: s.doc_count, chunks: s.chunk_count, embedding_dim: s.dim, index_file: 'index.json' } }];"
+      },
+      "id": "ingest-summary",
+      "name": "Ingest Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Docs": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Chunk Documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Documents": {
+      "main": [
+        [
+          {
+            "node": "Embed Chunk (Ollama all-minilm)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Chunk (Ollama all-minilm)": {
+      "main": [
+        [
+          {
+            "node": "Build Vector Index",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Vector Index": {
+      "main": [
+        [
+          {
+            "node": "To JSON File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To JSON File": {
+      "main": [
+        [
+          {
+            "node": "Write index.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write index.json": {
+      "main": [
+        [
+          {
+            "node": "Ingest Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": null,
+  "pinData": {}
+}

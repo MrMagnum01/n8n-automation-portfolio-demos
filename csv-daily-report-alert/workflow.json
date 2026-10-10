@@ -1,0 +1,683 @@
+{
+  "id": "csvDailyReport01",
+  "name": "Daily orders CSV: validate, report, alert",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      },
+      "id": "968a2be5-a0df-5744-80e9-0befa0421375",
+      "name": "Every day 07:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "857ef23d-cf23-5fa6-a58f-32adbbf0f316",
+      "name": "Manual run (demo)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "058844e9-a9f9-51a5-b5f5-6ade159a64ee",
+              "name": "company",
+              "value": "Ridgeline Trail Supply",
+              "type": "string"
+            },
+            {
+              "id": "6f37c755-0cd8-545f-b473-05398c8c64ea",
+              "name": "input_file",
+              "value": "/home/node/.n8n-files/csv-daily-report-alert/input/orders_latest.csv",
+              "type": "string"
+            },
+            {
+              "id": "0359cfb6-b046-5581-8f0b-83e3af833f70",
+              "name": "report_dir",
+              "value": "/home/node/.n8n-files/csv-daily-report-alert/reports",
+              "type": "string"
+            },
+            {
+              "id": "c426c145-3ce7-5500-9789-b9d07a69382a",
+              "name": "slack_webhook_url",
+              "value": "http://127.0.0.1:5690/slack/webhook",
+              "type": "string"
+            },
+            {
+              "id": "5d5c4641-cdfe-55d3-8d33-68a920114cfc",
+              "name": "email_api_url",
+              "value": "http://127.0.0.1:5690/email/send",
+              "type": "string"
+            },
+            {
+              "id": "02257aa4-dbfb-53db-b73e-5887f1b83cec",
+              "name": "alert_email_from",
+              "value": "reports@example.com",
+              "type": "string"
+            },
+            {
+              "id": "e940ac73-7810-5872-bd9f-97e12a62eb46",
+              "name": "alert_email_to",
+              "value": "ops-team@example.org",
+              "type": "string"
+            },
+            {
+              "id": "cb2198d7-7a81-57f5-a9b2-cd08490b7f87",
+              "name": "run_date",
+              "value": "={{ $now.toFormat('yyyy-MM-dd') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "59592349-7292-50b5-b958-ef50c6e02604",
+      "name": "Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "={{ $('Settings').first().json.input_file }}",
+        "options": {}
+      },
+      "id": "ff019f8e-0ed2-5670-a9de-8b6d3500c825",
+      "name": "Read orders CSV",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        540,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {
+          "headerRow": true
+        }
+      },
+      "id": "b1f8d772-547f-5fab-be44-e2d0df82cc1a",
+      "name": "Parse CSV",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// VALIDATION RULES - checked in this order, first failure wins,\n// so every bad row carries exactly ONE reason.\nconst VALID_CURRENCIES = ['USD', 'EUR', 'GBP'];\nconst VALID_REGIONS = ['EMEA', 'NA', 'APAC', 'LATAM'];\nconst EMAIL_RE = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst PRICE_RE = /^\\d+(\\.\\d{1,2})?$/;         // plain decimal, no thousands separators\nconst DATE_RE = /^\\d{4}-\\d{2}-\\d{2}$/;\nconst today = $now.toFormat('yyyy-MM-dd');     // workflow timezone = UTC\nconst seen = new Set();\n\nreturn $input.all().map((item, i) => {\n  const r = {};\n  for (const [k, v] of Object.entries(item.json)) r[k] = String(v ?? '').trim();\n\n  const qty = Number(r.qty);\n  let reason = '';\n  if (!r.order_id)                                        reason = 'missing_order_id';\n  else if (seen.has(r.order_id))                          reason = 'duplicate_order_id';\n  else if (!DATE_RE.test(r.order_date) || isNaN(Date.parse(r.order_date))) reason = 'invalid_date';\n  else if (r.order_date > today)                          reason = 'future_date';\n  else if (!r.customer_email)                             reason = 'missing_email';\n  else if (!EMAIL_RE.test(r.customer_email))              reason = 'invalid_email';\n  else if (!VALID_REGIONS.includes(r.region))             reason = 'unknown_region';\n  else if (!r.sku)                                        reason = 'missing_sku';\n  else if (!Number.isInteger(qty) || qty <= 0)            reason = 'bad_quantity';\n  else if (!PRICE_RE.test(r.unit_price))                  reason = 'non_numeric_price';\n  else if (!VALID_CURRENCIES.includes(r.currency))        reason = 'unknown_currency';\n\n  if (r.order_id) seen.add(r.order_id);\n  return { json: { ...r, csv_line: i + 2, reason } };   // csv_line = line number in the source file\n});\n"
+      },
+      "id": "b2c1f8ba-b612-57a5-abea-6416f2aacc37",
+      "name": "Validate rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "027eb444-bfc5-5f85-9f34-eb09aaaad16d",
+              "leftValue": "={{ $json.reason }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7a538e3d-d3ac-5944-82cb-a091e60587fc",
+      "name": "Valid or invalid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1340,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {
+          "fileName": "valid_rows.csv"
+        }
+      },
+      "id": "c4b76abb-dfee-55f6-8995-2ac767c2c201",
+      "name": "Valid rows to CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1620,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Settings').first().json.report_dir }}/valid_rows_{{ $('Settings').first().json.run_date }}.csv",
+        "options": {}
+      },
+      "id": "370c5752-d788-56a1-9209-77a871ded412",
+      "name": "Save valid_rows.csv",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {
+          "fileName": "bad_rows.csv"
+        }
+      },
+      "id": "a474e5e2-5eff-57fe-8bf0-f8b96e050736",
+      "name": "Bad rows to CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1620,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Settings').first().json.report_dir }}/bad_rows_{{ $('Settings').first().json.run_date }}.csv",
+        "options": {}
+      },
+      "id": "38b7091f-5eaf-5087-932b-f10c4e5e2415",
+      "name": "Save bad_rows.csv",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Aggregate the validated rows into one summary object.\nconst rows = $input.all().map(i => i.json);\nconst bad = rows.filter(r => r.reason);\nconst good = rows.filter(r => !r.reason);\nconst settings = $('Settings').first().json;\n\nconst LABELS = {\n  missing_order_id: 'Missing order id', duplicate_order_id: 'Duplicate order id',\n  invalid_date: 'Unparseable date', future_date: 'Order date in the future',\n  missing_email: 'Missing customer email', invalid_email: 'Malformed customer email',\n  unknown_region: 'Unknown region', missing_sku: 'Missing SKU',\n  bad_quantity: 'Quantity not a positive whole number',\n  non_numeric_price: 'Unit price not numeric', unknown_currency: 'Unknown currency',\n};\nconst round2 = n => Math.round(n * 100) / 100;\n\n// Revenue = qty x unit_price of VALID rows, refunded orders excluded. Kept per currency (no FX guessing).\nconst byRegion = {}, totals = {}, skus = {};\nlet refunded = 0;\nfor (const r of good) {\n  if (r.status === 'refunded') { refunded++; continue; }\n  const amount = Number(r.qty) * Number(r.unit_price);\n  const k = r.region + '|' + r.currency;\n  byRegion[k] ??= { region: r.region, currency: r.currency, orders: 0, units: 0, revenue: 0 };\n  byRegion[k].orders++; byRegion[k].units += Number(r.qty); byRegion[k].revenue += amount;\n  totals[r.currency] = (totals[r.currency] || 0) + amount;\n  skus[r.sku] ??= { sku: r.sku, orders: 0, units: 0 };\n  skus[r.sku].orders++; skus[r.sku].units += Number(r.qty);\n}\nconst reasons = {};\nfor (const r of bad) reasons[r.reason] = (reasons[r.reason] || 0) + 1;\nconst dates = good.map(r => r.order_date).sort();\n\nreturn [{ json: {\n  run_date: settings.run_date,\n  run_at: $now.toISO(),\n  source_file: settings.input_file.split('/').pop(),\n  company: settings.company,\n  rows: rows.length, valid: good.length, invalid: bad.length,\n  invalid_pct: rows.length ? round2(100 * bad.length / rows.length) : 0,\n  refunded_excluded: refunded,\n  order_date_from: dates[0] || null, order_date_to: dates[dates.length - 1] || null,\n  revenue_by_region: Object.values(byRegion)\n    .map(x => ({ ...x, revenue: round2(x.revenue) }))\n    .sort((a, b) => a.region.localeCompare(b.region) || a.currency.localeCompare(b.currency)),\n  revenue_totals: Object.entries(totals).map(([currency, v]) => ({ currency, revenue: round2(v) })),\n  top_skus: Object.values(skus).sort((a, b) => b.units - a.units || a.sku.localeCompare(b.sku)).slice(0, 5),\n  invalid_by_reason: Object.entries(reasons)\n    .map(([reason, count]) => ({ reason, label: LABELS[reason] || reason, count }))\n    .sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason)),\n  bad_rows: bad.map(r => ({ csv_line: r.csv_line, order_id: r.order_id, reason: r.reason })),\n} }];\n"
+      },
+      "id": "99f355ad-80a1-574b-970b-9c18dfe7069d",
+      "name": "Build summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Turn the summary into: an HTML report, a Slack-format message and an email payload.\nconst s = $input.first().json;\nconst cfg = $('Settings').first().json;\nconst fmt = (n, c) => (c ? c + ' ' : '') + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\nconst esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst reportFile = `${cfg.report_dir}/report_${s.run_date}.html`;\nconst badFile = `${cfg.report_dir}/bad_rows_${s.run_date}.csv`;\nconst validFile = `${cfg.report_dir}/valid_rows_${s.run_date}.csv`;\nconst status = s.invalid > 0 ? 'attention' : 'clean';\nconst headline = s.invalid > 0\n  ? `${s.invalid} of ${s.rows} rows need attention (${s.invalid_pct}%)`\n  : `All ${s.rows} rows passed validation`;\nconst MAX_LISTED = 10;\nconst listed = s.bad_rows.slice(0, MAX_LISTED);\nconst more = s.bad_rows.length - listed.length;\nconst labelOf = Object.fromEntries(s.invalid_by_reason.map(x => [x.reason, x.label]));\n\n// ---------- HTML report ----------\nconst th = h => `<th>${h}</th>`;\nconst html = `<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">\n<title>Daily orders report ${s.run_date}</title>\n<style>\n body{font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;background:#f4f6f9;color:#1d2433;margin:0;padding:32px}\n .wrap{max-width:980px;margin:auto}\n h1{font-size:24px;margin:0 0 4px} .sub{color:#667085;margin-bottom:22px}\n .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}\n .kpi{background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 1px 3px rgba(16,24,40,.1)}\n .kpi b{display:block;font-size:28px} .kpi span{color:#667085;font-size:13px}\n .kpi.bad b{color:#c4321c} .kpi.ok b{color:#1b7f4b}\n .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n .card{background:#fff;border-radius:10px;padding:16px 20px;box-shadow:0 1px 3px rgba(16,24,40,.1);margin-bottom:14px}\n .card h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;color:#475467}\n table{border-collapse:collapse;width:100%} th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #eef0f4;font-size:14px}\n th{color:#667085;font-weight:600} td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}\n code{background:#eef0f4;border-radius:4px;padding:1px 6px;font-size:13px}\n .foot{color:#98a2b3;font-size:12px;margin-top:18px}\n</style></head><body><div class=\"wrap\">\n<h1>${esc(s.company)} - daily orders report</h1>\n<div class=\"sub\">Source <code>${esc(s.source_file)}</code> &middot; order dates ${s.order_date_from} to ${s.order_date_to} &middot; generated ${s.run_at.slice(0, 16).replace('T', ' ')} UTC</div>\n<div class=\"kpis\">\n <div class=\"kpi\"><b>${s.rows}</b><span>rows read</span></div>\n <div class=\"kpi ok\"><b>${s.valid}</b><span>valid</span></div>\n <div class=\"kpi ${s.invalid ? 'bad' : 'ok'}\"><b>${s.invalid}</b><span>invalid (${s.invalid_pct}%)</span></div>\n <div class=\"kpi\"><b>${s.revenue_totals.map(t => fmt(t.revenue, t.currency)).join('<br>') || '-'}</b><span>net revenue (valid, excl. ${s.refunded_excluded} refunded)</span></div>\n</div>\n<div class=\"grid\">\n <div class=\"card\"><h2>Revenue by region</h2><table><tr>${th('Region')}${th('Cur.')}<th class=\"n\">Orders</th><th class=\"n\">Revenue</th></tr>\n ${s.revenue_by_region.map(x => `<tr><td>${x.region}</td><td>${x.currency}</td><td class=\"n\">${x.orders}</td><td class=\"n\">${fmt(x.revenue)}</td></tr>`).join('')}</table></div>\n <div class=\"card\"><h2>Top SKUs by units</h2><table><tr>${th('SKU')}<th class=\"n\">Orders</th><th class=\"n\">Units</th></tr>\n ${s.top_skus.map(x => `<tr><td><code>${x.sku}</code></td><td class=\"n\">${x.orders}</td><td class=\"n\">${x.units}</td></tr>`).join('')}</table></div>\n</div>\n<div class=\"card\"><h2>Invalid rows by reason</h2><table><tr>${th('Reason')}${th('Rule')}<th class=\"n\">Rows</th></tr>\n ${s.invalid_by_reason.map(x => `<tr><td><code>${x.reason}</code></td><td>${esc(x.label)}</td><td class=\"n\">${x.count}</td></tr>`).join('') || '<tr><td colspan=\"3\">None</td></tr>'}</table></div>\n<div class=\"card\"><h2>Bad rows (CSV line / order / reason)</h2><table><tr><th class=\"n\">Line</th>${th('Order')}${th('Reason')}</tr>\n ${s.bad_rows.map(x => `<tr><td class=\"n\">${x.csv_line}</td><td>${esc(x.order_id || '(blank)')}</td><td><code>${x.reason}</code></td></tr>`).join('') || '<tr><td colspan=\"3\">None</td></tr>'}</table></div>\n<div class=\"foot\">Synthetic demo data. Full list: <code>bad_rows_${s.run_date}.csv</code>. Generated by an n8n workflow.</div>\n</div></body></html>`;\n\n// ---------- Slack message (Block Kit + plain-text fallback) ----------\nconst pad = (t, n) => String(t).padEnd(n);\nconst regionLines = s.revenue_by_region.map(x => `${pad(x.region, 6)} ${x.currency}  ${fmt(x.revenue).padStart(12)}  (${x.orders} orders)`).join('\\n');\nconst skuLines = s.top_skus.map((x, i) => `${i + 1}. ${x.sku} - ${x.units} units`).join('\\n');\nconst reasonLines = s.invalid_by_reason.map(x => `- *${x.count}* x ${x.label} (\\`${x.reason}\\`)`).join('\\n');\nconst badLines = listed.map(x => `line ${x.csv_line} - \\`${x.order_id || 'blank id'}\\` - ${labelOf[x.reason] || x.reason}`).join('\\n')\n  + (more > 0 ? `\\n_...and ${more} more in the CSV_` : '');\nconst slack = {\n  text: `Daily orders report ${s.run_date}: ${headline}`,\n  blocks: [\n    { type: 'header', text: { type: 'plain_text', text: `:warning: Daily orders report - ${s.run_date}`, emoji: true } },\n    { type: 'section', text: { type: 'mrkdwn', text: `*${headline}* in \\`${s.source_file}\\`` } },\n    { type: 'section', fields: [\n      { type: 'mrkdwn', text: `*Rows read*\\n${s.rows}` },\n      { type: 'mrkdwn', text: `*Valid*\\n${s.valid}` },\n      { type: 'mrkdwn', text: `*Invalid*\\n${s.invalid} (${s.invalid_pct}%)` },\n      { type: 'mrkdwn', text: `*Net revenue*\\n${s.revenue_totals.map(t => fmt(t.revenue, t.currency)).join(' + ')}` },\n    ] },\n    { type: 'divider' },\n    { type: 'section', text: { type: 'mrkdwn', text: `*Invalid rows by reason*\\n${reasonLines}` } },\n    { type: 'section', text: { type: 'mrkdwn', text: `*First ${listed.length} bad rows*\\n${badLines}` } },\n    { type: 'section', text: { type: 'mrkdwn', text: `*Revenue by region*\\n\\`\\`\\`${regionLines}\\`\\`\\`` } },\n    { type: 'section', text: { type: 'mrkdwn', text: `*Top SKUs*\\n${skuLines}` } },\n    { type: 'context', elements: [{ type: 'mrkdwn', text: `Full list: \\`bad_rows_${s.run_date}.csv\\` - report: \\`report_${s.run_date}.html\\` - demo run, mock webhook` }] },\n  ],\n};\n\n// ---------- Email payload (generic transactional-email API shape) ----------\nconst text = [\n  `${s.company} - daily orders report ${s.run_date}`, '', headline, '',\n  `Rows read: ${s.rows}   Valid: ${s.valid}   Invalid: ${s.invalid}`, '',\n  'Invalid rows by reason:', ...s.invalid_by_reason.map(x => `  ${x.count} x ${x.label} (${x.reason})`), '',\n  'Bad rows:', ...listed.map(x => `  line ${x.csv_line}  ${x.order_id || '(blank)'}  ${x.reason}`),\n  more > 0 ? `  ...and ${more} more (see attached CSV)` : '', '',\n  'Attachments: bad_rows_' + s.run_date + '.csv, report_' + s.run_date + '.html',\n].join('\\n');\nconst email = {\n  from: cfg.alert_email_from, to: [cfg.alert_email_to],\n  subject: `[${s.company}] Orders ${s.run_date}: ${s.invalid} of ${s.rows} rows need attention`,\n  text,\n  html: `<h2>${esc(s.company)} - daily orders report ${s.run_date}</h2><p><b>${esc(headline)}</b></p><ul>`\n    + s.invalid_by_reason.map(x => `<li>${x.count} x ${esc(x.label)} (<code>${x.reason}</code>)</li>`).join('') + '</ul>',\n  attachments: [{ filename: `bad_rows_${s.run_date}.csv`, path: badFile }, { filename: `report_${s.run_date}.html`, path: reportFile }],\n};\n\nreturn [{ json: { ...s, status, headline, html, slack, email, files: { reportFile, badFile, validFile } } }];\n"
+      },
+      "id": "5ef6c67c-d700-547e-a210-5c012c12a1cc",
+      "name": "Compose report + alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "html",
+        "binaryPropertyName": "data",
+        "options": {
+          "fileName": "report.html"
+        }
+      },
+      "id": "eb1f7ee0-3688-5f58-b632-2f850bf2efd6",
+      "name": "Report to HTML file",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1840,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Compose report + alerts').first().json.files.reportFile }}",
+        "options": {}
+      },
+      "id": "cd252679-9541-5153-94db-4221f3478feb",
+      "name": "Save report.html",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2060,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f75162ba-b1f7-590e-ae0d-1a1f497980c4",
+              "leftValue": "={{ $('Compose report + alerts').first().json.invalid }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8256011f-2c15-57b5-90db-4f133105f8a1",
+      "name": "Any bad rows?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.slack_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Compose report + alerts').first().json.slack) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "22f68e48-ef9f-58b8-89c5-1d068ad46712",
+      "name": "Post Slack alert (mock)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2700,
+        550
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Settings').first().json.email_api_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Compose report + alerts').first().json.email) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "260b312e-9f2f-59df-aa77-7053296862db",
+      "name": "Send email alert (mock)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2700,
+        750
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "content": "# Daily orders CSV: validate, report, alert\nReads the morning orders export, checks every row against **11 readable rules** (one reason per bad row), writes an HTML report plus `valid_rows` / `bad_rows` CSVs, and, if anything is wrong, posts a Slack-format alert and an email payload.\n\n**Mock endpoints:** Slack and email go to a local sink on `127.0.0.1`. Swap the two URLs in *Settings* for a real Slack webhook / email API.",
+        "height": 200,
+        "width": 1180,
+        "color": 7
+      },
+      "id": "b2282751-a517-5ea0-b38a-ec2789ad9873",
+      "name": "Sticky Daily orders CSV: validate, report, alert",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -190
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Triggers & settings\nDaily at **07:00 UTC**. The manual trigger is for demo / test runs. *Settings* holds paths, endpoints and recipients in one place.",
+        "height": 520,
+        "width": 480,
+        "color": 4
+      },
+      "id": "544bd5ea-3973-586d-9c1e-d0c4d637dcb1",
+      "name": "Sticky 1. Triggers & settings",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Ingest\nRead the CSV from disk and parse it to one item per row. Swap for *Google Sheets* or *HTTP / SFTP* to read a different source.",
+        "height": 520,
+        "width": 440,
+        "color": 3
+      },
+      "id": "a392dfe1-2218-5689-b66b-70f9f85e14fa",
+      "name": "Sticky 2. Ingest",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Validate\nOne Code node, rules in plain JS. First failing rule wins, so each bad row has exactly one `reason`.",
+        "height": 520,
+        "width": 260,
+        "color": 6
+      },
+      "id": "8ce97144-6bb1-540e-a536-c4c7d3f79f31",
+      "name": "Sticky 3. Validate",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        960,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. Split & export rows\nValid and invalid rows are written to separate CSVs in the report folder.",
+        "height": 550,
+        "width": 800,
+        "color": 5
+      },
+      "id": "72c49e85-db5b-5041-92f8-bc44ab532076",
+      "name": "Sticky 4. Split & export rows",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 5. Summarise & report\nTotals, revenue by region, top SKUs, invalid-by-reason, then render the HTML report.",
+        "height": 270,
+        "width": 1060,
+        "color": 2
+      },
+      "id": "15d9289f-5bba-5803-96f5-69b82f023284",
+      "name": "Sticky 5. Summarise & report",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1260,
+        585
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 6. Alert if bad rows\nIF invalid > 0: POST Slack Block Kit JSON and an email payload (retry x3).",
+        "height": 400,
+        "width": 740,
+        "color": 1
+      },
+      "id": "4614488d-0f88-5f4d-aaab-08e7c426f432",
+      "name": "Sticky 6. Alert if bad rows",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2340,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Every day 07:00 UTC": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual run (demo)": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read orders CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read orders CSV": {
+      "main": [
+        [
+          {
+            "node": "Parse CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse CSV": {
+      "main": [
+        [
+          {
+            "node": "Validate rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate rows": {
+      "main": [
+        [
+          {
+            "node": "Valid or invalid?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid rows to CSV": {
+      "main": [
+        [
+          {
+            "node": "Save valid_rows.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bad rows to CSV": {
+      "main": [
+        [
+          {
+            "node": "Save bad_rows.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build summary": {
+      "main": [
+        [
+          {
+            "node": "Compose report + alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose report + alerts": {
+      "main": [
+        [
+          {
+            "node": "Report to HTML file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report to HTML file": {
+      "main": [
+        [
+          {
+            "node": "Save report.html",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save report.html": {
+      "main": [
+        [
+          {
+            "node": "Any bad rows?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid or invalid?": {
+      "main": [
+        [
+          {
+            "node": "Valid rows to CSV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bad rows to CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any bad rows?": {
+      "main": [
+        [
+          {
+            "node": "Post Slack alert (mock)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send email alert (mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC"
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "triggerCount": 0,
+  "tags": []
+}
